@@ -161,6 +161,8 @@ exit_soft = False
 # 所有设置窗口和子窗口
 child_forms = {}
 
+# info form
+INFO_WIN={"data":{},"win":None}
 
 # 存放视频分离为无声视频进度，noextname为key，用于判断某个视频是否是否已预先创建好 novice_mp4, “ing”=需等待，end=成功完成，error=出错了
 queue_novice = {}
@@ -258,17 +260,24 @@ def parse_init():
         "remove_white_ms": 0,
         "force_edit_srt": True,
         "vad": True,
-        "overall_silence": 200,
-        "overall_threshold": 0.5,
-        "overall_speech_pad_ms": 100,
+
+        "threshold":0.5,
+        "min_speech_duration_ms":250,
+        "min_silence_duration_ms":2000,
+        "max_speech_duration_s":0,
+        "speech_pad_ms":400,
+
+
         "overall_maxsecs":12000,
-        "rephrase":True,
+
+        "rephrase":False,
         "voice_silence": 200,
         "interval_split": 10,
         "bgm_split_time": 300,
         "trans_thread": 20,
         "retries": 2,
-        "translation_wait": 0.1,
+        "translation_wait": 0,
+        "dubbing_wait": 0,
         "dubbing_thread": 5,
         "countdown_sec": 120,
         "backaudio_volume": 0.8,
@@ -331,6 +340,8 @@ def parse_init():
     else:
         _settings = {}
         for key, val in temp_json.items():
+            if key not in default:
+                continue
             value = str(val).strip()
             if re.match(r'^\d+$', value):
                 _settings[key] = int(value)
@@ -390,7 +401,7 @@ box_lang = _obj['toolbox_lang']
 proxy=""
 #############################################
 # openai  faster-whisper 识别模型
-WHISPER_MODEL_LIST = re.split('[,，]', settings['model_list'])
+WHISPER_MODEL_LIST = re.split(r'[,，]', settings['model_list'])
 
 ChatTTS_voicelist = re.split(r'[,，]', settings['chattts_voice'])
 _chatgpt_model_list = [it.strip() for it in settings['chatgpt_model'].split(',') if it.strip()]

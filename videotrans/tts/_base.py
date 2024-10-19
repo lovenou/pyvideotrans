@@ -11,6 +11,7 @@ import requests
 
 from videotrans.configure import config
 from videotrans.configure._base import BaseCon
+from videotrans.configure._except import IPLimitExceeded
 from videotrans.util import tools
 
 
@@ -44,6 +45,7 @@ class BaseTTS(BaseCon):
         self.queue_tts = copy.deepcopy(queue_tts)
         # 线程池时先复制一份再pop，以便出错重试时数据正常
         self.copydata = []
+        self.wait_sec=float(config.settings.get('dubbing_wait', 0))
 
         self.dub_nums = int(float(config.settings.get('dubbing_thread', 1))) if self.len > 1 else 1
         self.error = ''
@@ -78,6 +80,8 @@ class BaseTTS(BaseCon):
         self._signal(text="")
         try:
             self._exec()
+        except IPLimitExceeded as e:
+            raise
         except (requests.ConnectionError, requests.HTTPError, requests.Timeout, requests.exceptions.ProxyError):
             api_url_msg = f',请检查Api地址,当前Api: {self.api_url}' if self.api_url else ''
             proxy_msg = '' if not self.proxies else f'{list(self.proxies.values())[0]}'
@@ -109,7 +113,7 @@ class BaseTTS(BaseCon):
                 err += 1
         # 错误量大于 1/3
         if err > int(len(self.queue_tts) / 3):
-            msg = f'{config.transobj["peiyindayu31"]}:{self.error if self.error is not True else ""}'
+            msg = f'{self.error if self.error else ""} {config.transobj["peiyindayu31"]}:{self.error if self.error is not True else ""}'
             self._signal(text=msg, type="error")
             raise Exception(msg)
         # 去除末尾静音
@@ -147,10 +151,15 @@ class BaseTTS(BaseCon):
             if self._exit():
                 return
             all_task = []
-            with ThreadPoolExecutor(max_workers=self.dub_nums) as pool:
+            if self.dub_nums==1:
                 for k, item in enumerate(self.queue_tts):
-                    all_task.append(pool.submit(self._item_task, item))
-                _ = [i.result() for i in all_task]
+                    self._item_task(item)
+                    time.sleep(self.wait_sec)
+            else:
+                with ThreadPoolExecutor(max_workers=self.dub_nums) as pool:
+                    for k, item in enumerate(self.queue_tts):
+                        all_task.append(pool.submit(self._item_task, item))
+                    _ = [i.result() for i in all_task]
 
             err_num = 0
             for it in self.queue_tts:

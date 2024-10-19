@@ -223,7 +223,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.split_type.currentIndexChanged.connect(self.win_action.check_split_type)
         self.model_name.currentTextChanged.connect(self.win_action.check_model_name)
         self.recogn_type.currentIndexChanged.connect(self.win_action.recogn_type_change)
-        # self.voice_rate.valueChanged.connect(self.win_action.voice_rate_changed)
+        self.reglabel.clicked.connect(self.win_action.click_reglabel)
+        self.label_8.clicked.connect(self.win_action.click_subtitle)
+        self.label_9.clicked.connect(self.win_action.click_translate_type)
+        self.tts_text.clicked.connect(self.win_action.click_tts_type)
+
 
 
     def start_subform(self):
@@ -328,6 +332,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if w and hasattr(w, 'close'):
                     w.hide()
                     w.close()
+            if config.INFO_WIN['win']:
+                config.INFO_WIN['win'].close()
         except Exception:
             pass
         time.sleep(2)

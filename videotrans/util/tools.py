@@ -369,6 +369,19 @@ def runffprobe(cmd):
         raise
 
 
+def hide_show_element(wrap_layout, show_status):
+    def hide_recursive(layout, show_status):
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if item.widget():
+                if not show_status:
+                    item.widget().hide()
+                else:
+                    item.widget().show()
+            elif item.layout():
+                hide_recursive(item.layout(), show_status)
+    hide_recursive(wrap_layout, show_status)
+
 # 获取视频信息
 def get_video_info(mp4_file, *, video_fps=False, video_scale=False, video_time=False, get_codec=False):
     mp4_file = Path(mp4_file).as_posix()
@@ -541,10 +554,12 @@ def conver_to_16k(audio, target_audio):
 
 #  背景音乐是wav,配音人声是m4a，都在目标文件夹下，合并后最后文件仍为 人声文件，时长需要等于人声
 def backandvocal(backwav, peiyinm4a):
+    import tempfile
     backwav = Path(backwav).as_posix()
     peiyinm4a = Path(peiyinm4a).as_posix()
-    tmpwav = Path((os.environ["TEMP"] or os.environ['temp']) + f'/{time.time()}-1.m4a').as_posix()
-    tmpm4a = Path((os.environ["TEMP"] or os.environ['temp']) + f'/{time.time()}.m4a').as_posix()
+    tmpdir=tempfile.gettempdir()
+    tmpwav = Path(tmpdir + f'/{time.time()}-1.m4a').as_posix()
+    tmpm4a = Path(tmpdir + f'/{time.time()}.m4a').as_posix()
     # 背景转为m4a文件,音量降低为0.8
     wav2m4a(backwav, tmpm4a, ["-filter:a", f"volume={config.settings['backaudio_volume']}"])
     runffmpeg(['-y', '-i', peiyinm4a, '-i', tmpm4a, '-filter_complex',
@@ -1297,11 +1312,11 @@ def cleartext(text: str,remove_start_end=True):
     res_text=text.replace('&#39;', "'").replace('&quot;', '"').replace("\u200b", " ").strip()
     # 删掉连续的多个标点符号，只保留一个
     res_text=re.sub(r'([，。！？,.?]\s?){2,}', ',', res_text)
-    if not remove_start_end:
+    if not res_text or not remove_start_end:
         return res_text
     if res_text[-1] in ['，',',']:
         res_text=res_text[:-1]
-    if res_text[0] in ['，',',']:
+    if res_text and res_text[0] in ['，',',']:
         res_text=res_text[1:]
     return res_text
 
